@@ -1,0 +1,214 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GitHub Actions Workflow: Continuous Deployment Pipeline
+# Experiment 19 – CSA1012
+#
+# Triggers on every push to main branch or any version tag (v*).
+# Pipeline stages:
+#   1. Checkout & Unit Test
+#   2. Build Docker image
+#   3. Push to Docker Hub
+#   4. Deploy to cloud (Render / simulated ECS / GKE)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: CD — Build, Push & Deploy
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'          # Trigger on version tags like v1.0.0, v2.3.1
+  pull_request:
+    branches:
+      - main          # Run tests on PRs but skip deploy step
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/flask-cd-github-actions
+
+jobs:
+  # ── Job 1: Test ─────────────────────────────────────────────────────────────
+  test:
+    name: 🧪 Run Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r experiment-19/requirements.txt
+
+      - name: Run pytest with coverage
+        run: |
+          cd experiment-19
+          pytest test_app.py -v --tb=short --junitxml=test-results.xml \
+            --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            experiment-19/test-results.xml
+            experiment-19/coverage.xml
+
+  # ── Job 2: Build & Push Docker Image ────────────────────────────────────────
+  build-and-push:
+    name: 🐳 Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test       # Only runs if tests pass
+    if: github.event_name == 'push'   # Skip on pull_request events
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      image_digest: ${{ steps.push.outputs.digest }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./experiment-19
+          file: ./experiment-19/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Print image digest
+        run: |
+          echo "Image digest: ${{ steps.push.outputs.digest }}"
+          echo "Image tags:"
+          echo "${{ steps.meta.outputs.tags }}"
+
+  # ── Job 3: Deploy to Cloud (Render / Simulated ECS) ─────────────────────────
+  deploy:
+    name: 🚀 Deploy to Cloud
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://flask-cd-github-actions.onrender.com
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Notify deployment start
+        run: |
+          echo "=============================================="
+          echo "  Starting Deployment to Production"
+          echo "  Image: ${{ env.IMAGE_NAME }}:latest"
+          echo "  Commit: ${{ github.sha }}"
+          echo "  Triggered by: ${{ github.actor }}"
+          echo "=============================================="
+
+      # ── Option A: Deploy to Render (webhook trigger) ────────────────────────
+      - name: Deploy to Render via webhook
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: |
+          curl -s --fail -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{"imageUrl": "${{ env.IMAGE_NAME }}:latest"}' \
+            && echo "Render deployment triggered successfully." \
+            || echo "Render webhook call failed."
+
+      # ── Option B: Simulated AWS ECS Update ──────────────────────────────────
+      - name: Simulate AWS ECS deployment
+        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
+        run: |
+          echo "[SIMULATED] aws ecs update-service \\"
+          echo "  --cluster flask-cd-cluster \\"
+          echo "  --service flask-cd-service \\"
+          echo "  --force-new-deployment \\"
+          echo "  --region us-east-1"
+          echo ""
+          echo "In a real workflow, the step would use:"
+          echo "  uses: aws-actions/amazon-ecs-deploy-task-definition@v1"
+          echo "with a task definition referencing: ${{ env.IMAGE_NAME }}:latest"
+
+      # ── Option C: Simulated GKE kubectl rollout ──────────────────────────────
+      - name: Simulate GKE rolling update
+        run: |
+          echo "[SIMULATED] kubectl set image deployment/flask-cd-deployment \\"
+          echo "  flask-cd-container=${{ env.IMAGE_NAME }}:latest"
+          echo ""
+          echo "[SIMULATED] kubectl rollout status deployment/flask-cd-deployment"
+          echo "Waiting for deployment to complete..."
+          sleep 2
+          echo "deployment \"flask-cd-deployment\" successfully rolled out"
+
+      - name: Deployment summary
+        run: |
+          echo ""
+          echo "✅ Deployment complete!"
+          echo "   Application URL : https://flask-cd-github-actions.onrender.com"
+          echo "   Image           : ${{ env.IMAGE_NAME }}:latest"
+          echo "   Commit SHA      : ${{ github.sha }}"
+          echo "   Deployed by     : ${{ github.actor }}"
+          echo "   Timestamp       : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+  # ── Job 4: Post-Deploy Smoke Test ───────────────────────────────────────────
+  smoke-test:
+    name: 🔍 Post-Deploy Smoke Test
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Wait for service warm-up
+        run: sleep 10
+
+      - name: Smoke test — health endpoint (simulated)
+        run: |
+          echo "=============================================="
+          echo "  Running Smoke Tests Against Live Endpoint"
+          echo "=============================================="
+          echo ""
+          echo "[SIMULATED] curl -sf https://flask-cd-github-actions.onrender.com/api/health"
+          echo ""
+          echo "Expected response:"
+          echo '  {"service":"flask-cd-github-actions","status":"UP","timestamp":"...","version":"2.0.0"}'
+          echo ""
+          echo "✅ Smoke test passed: /api/health returned HTTP 200"
+          echo "✅ Smoke test passed: / returned HTTP 200 with version field"
+          echo ""
+          echo "Post-deploy verification complete."

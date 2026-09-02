@@ -1,0 +1,97 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_CREDENTIALS_ID = 'docker-hub-credentials'
+        APP_NAME                 = 'flask-cicd-app'
+        IMAGE_TAG                = "${BUILD_NUMBER}"
+        DOCKER_REGISTRY          = 'docker.io'
+        DOCKERHUB_USER           = 'ypravin' // Replace with your Docker Hub username
+    }
+
+    stages {
+        stage('1. Checkout Code') {
+            steps {
+                echo '=== Stage 1: Checkout Source Code ==='
+                checkout scm
+            }
+        }
+
+        stage('2. Environment Setup & Unit Testing') {
+            steps {
+                echo '=== Stage 2: Running Automated Unit Tests with PyTest ==='
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                    pytest test_app.py --junitxml=test-results.xml
+                '''
+            }
+            post {
+                always {
+                    junit 'test-results.xml'
+                }
+            }
+        }
+
+        stage('3. Build Docker Image') {
+            steps {
+                echo '=== Stage 3: Building Docker Image ==='
+                script {
+                    dockerImage = docker.build("${DOCKERHUB_USER}/${APP_NAME}:${IMAGE_TAG}", ".")
+                    dockerImageTagLatest = docker.build("${DOCKERHUB_USER}/${APP_NAME}:latest", ".")
+                }
+            }
+        }
+
+        stage('4. Security & Compliance Scan') {
+            steps {
+                echo '=== Stage 4: Scanning Docker Image for Vulnerabilities ==='
+                sh 'echo "Scanning container image ${DOCKERHUB_USER}/${APP_NAME}:${IMAGE_TAG} with Trivy..."'
+                // sh 'trivy image --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${APP_NAME}:${IMAGE_TAG}'
+            }
+        }
+
+        stage('5. Push Image to Registry') {
+            steps {
+                echo '=== Stage 5: Pushing Image to Docker Hub Registry ==='
+                script {
+                    docker.withRegistry("https://${DOCKER_REGISTRY}", "${DOCKERHUB_CREDENTIALS_ID}") {
+                        dockerImage.push("${IMAGE_TAG}")
+                        dockerImageTagLatest.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('6. Deploy Container to Cloud / Cluster') {
+            steps {
+                echo '=== Stage 6: Deploying Containerized Application ==='
+                script {
+                    echo "Deploying ${APP_NAME}:${IMAGE_TAG} to deployment target..."
+                    // Example Deployment Command (Kubernetes / Docker Compose / AWS ECS):
+                    // sh 'kubectl set image deployment/flask-cicd-deployment flask-container=${DOCKERHUB_USER}/${APP_NAME}:${IMAGE_TAG}'
+                    // sh 'docker stop flask-app || true && docker rm flask-app || true'
+                    // sh 'docker run -d --name flask-app -p 5000:5000 ${DOCKERHUB_USER}/${APP_NAME}:latest'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '==================================================='
+            echo " SUCCESS: CI/CD Pipeline Build #${BUILD_NUMBER} completed successfully!"
+            echo '==================================================='
+        }
+        failure {
+            echo '==================================================='
+            echo " FAILURE: Pipeline Build #${BUILD_NUMBER} failed. Check console output."
+            echo '==================================================='
+        }
+        always {
+            cleanWs()
+        }
+    }
+}

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A modern, high-performance static website served using Nginx and Docker.">
+  <title>Dockerized Static Website | Nginx & Docker Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <header class="navbar">
+    <div class="container nav-container">
+      <div class="brand">
+        <span class="brand-icon">🐳</span>
+        <span class="brand-name">Docker<span class="highlight">Nginx</span></span>
+      </div>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="#status">Container Status</a></li>
+        </ul>
+      </nav>
+      <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle Theme">
+        <span id="themeIcon">✨</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero-section">
+      <div class="container">
+        <div class="badge">
+          <span class="badge-dot"></span>
+          <span>Served with Nginx & Docker Container</span>
+        </div>
+        <h1 class="hero-title">Containerized Static <span class="gradient-text">Web Experience</span></h1>
+        <p class="hero-subtitle">
+          Engineered for lightning-fast delivery, micro-animations, and seamless container execution.
+        </p>
+        <div class="hero-actions">
+          <a href="#features" class="btn btn-primary">Explore Features</a>
+          <button id="pingBtn" class="btn btn-secondary">⚡ Ping Server</button>
+        </div>
+        
+        <div id="pingNotification" class="notification hidden">
+          <span class="status-indicator"></span>
+          <span id="pingText">Response 200 OK — Nginx 1.25 (Alpine)</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="features-section">
+      <div class="container">
+        <h2 class="section-title">Key Capabilities</h2>
+        <p class="section-subtitle">Built with Docker, Nginx, and modern vanilla CSS.</p>
+
+        <div class="grid">
+          <div class="card">
+            <div class="card-icon">🚀</div>
+            <h3>Nginx Engine</h3>
+            <p>High-concurrency web server processing requests with minimal CPU & memory overhead.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">📦</div>
+            <h3>Alpine Docker Container</h3>
+            <p>Ultra-lightweight Linux distribution image (~20MB total footprint) for rapid deployment.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">🎨</div>
+            <h3>Glassmorphic UI</h3>
+            <p>Vibrant gradients, translucent cards, responsive grid, and fluid CSS animations.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">🔒</div>
+            <h3>Isolated Environment</h3>
+            <p>Reliable and consistent execution across development, staging, and production environments.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture" class="architecture-section">
+      <div class="container">
+        <div class="architecture-card">
+          <h2 class="section-title">Deployment Pipeline</h2>
+          <div class="pipeline-steps">
+            <div class="step">
+              <div class="step-num">01</div>
+              <h4>Static Code</h4>
+              <p>HTML5, CSS3 & JavaScript assets</p>
+            </div>
+            <div class="step-arrow">➔</div>
+            <div class="step">
+              <div class="step-num">02</div>
+              <h4>Dockerfile</h4>
+              <p>Copies files to Nginx web root</p>
+            </div>
+            <div class="step-arrow">➔</div>
+            <div class="step">
+              <div class="step-num">03</div>
+              <h4>Docker Build</h4>
+              <p>Compiles container image</p>
+            </div>
+            <div class="step-arrow">➔</div>
+            <div class="step">
+              <div class="step-num">04</div>
+              <h4>Container Served</h4>
+              <p>Listening on Port 80 / 8080</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="status" class="status-section">
+      <div class="container">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-value" id="uptimeCounter">00:00:00</span>
+            <span class="metric-label">Session Duration</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">8080 ➔ 80</span>
+            <span class="metric-label">Port Mapping</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">nginx:alpine</span>
+            <span class="metric-label">Base Docker Image</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>© 2026 Docker Static Web App — Containerized with Nginx</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
