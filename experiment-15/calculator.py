@@ -12,7 +12,12 @@ def subtract(a: float, b: float) -> float:
     return a - b
 
 def calculate_discount(price: float, discount_rate: float) -> float:
-    """Calculates discounted price with discount rate range validation."""
+    """
+    Calculates discounted price with comprehensive validation.
+    Resolved Merge Conflict: Retains both price positivity and discount rate bounds.
+    """
+    if price < 0.0:
+        raise ValueError("Price cannot be negative")
     if not 0.0 <= discount_rate <= 1.0:
         raise ValueError("Discount rate must be between 0.0 and 1.0")
     return round(price * (1 - discount_rate), 2)
