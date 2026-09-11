@@ -1,7 +1,7 @@
-# Experiment 14: Collaborative Development via Git Fork & Pull Request Workflow
+# How to work with Git branches and resolve merge conflicts when Collaborating with others
 
 ## Overview
-This experiment demonstrates the open-source and collaborative **Fork-and-Pull Request (PR)** workflow using Git and GitHub.
+This experiment demonstrates the open-source and collaborative **work with Git branches and resolve merge conflictsusing Git and GitHub.
 
 ## Tasks Covered
 1. **Fork** an upstream public GitHub repository.
